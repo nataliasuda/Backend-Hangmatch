@@ -77,3 +77,33 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 @app.get("/users", response_model=list[schemas.UserRead])
 def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     return crud.get_users(db, skip=skip, limit=limit)
+
+@app.put("/users/me", response_model=schemas.UserRead)
+def update_user_profile(
+    updated_user: schemas.UserRegister, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    user = db.query(models.User).filter(models.User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+
+    user.name = updated_user.name
+    user.email = updated_user.email
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+@app.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_account(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    user = db.query(models.User).filter(models.User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return 
