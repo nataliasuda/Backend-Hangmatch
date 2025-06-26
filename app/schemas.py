@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, validator
 import re
+from typing import List
 
 class UserRegister(BaseModel):
     name: str
@@ -39,7 +40,7 @@ class UserRead(BaseModel):
     email: EmailStr
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Message(BaseModel):
@@ -49,3 +50,19 @@ class Message(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class SessionCreate(BaseModel):
+    name: str
+    location_radius: int
+    invited_users_ids: List[int]
+
+class SessionOut(BaseModel):
+    id: int
+    name: str
+    location_radius: int
+    owner_id: int
+    invited_users_ids: List[int]
+
+    class Config:
+        from_attributes = True
