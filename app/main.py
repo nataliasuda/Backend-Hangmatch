@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from typing import List
+from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from sqlalchemy.orm import Session
 from jose import JWTError
 from fastapi.security import OAuth2PasswordBearer
@@ -7,6 +8,8 @@ from datetime import timedelta
 from app import models, schemas, crud
 from app.database import SessionLocal, engine, Base
 from app.auth import create_access_token, decode_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.models import User
+from app.crud import create_session
 
 Base.metadata.create_all(bind=engine)
 
@@ -15,6 +18,7 @@ app = FastAPI(
     title="HangMatch API",
     description="RESTful API for managing sessions, users, and shared activity voting in the HangMatch app — designed for social interaction and decision-making.",
     version="1.0.0",
+    
 )
 def get_db():
     db = SessionLocal()
@@ -24,7 +28,7 @@ def get_db():
         db.close()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
+user_router = APIRouter(tags=["users"])
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -44,7 +48,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
     return user
 
-@app.post("/register", response_model=schemas.Message)
+@user_router.post("/register", response_model=schemas.Message)
 def register_user(user: schemas.UserRegister, db: Session = Depends(get_db)):
     if crud.get_user_by_email(db, user.email):
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -53,7 +57,7 @@ def register_user(user: schemas.UserRegister, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Passwords do not match")
     return {"message": "Account successfully registered."}
 
-@app.post("/login", response_model=schemas.Token)
+@user_router.post("/login", response_model=schemas.Token)
 def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
     db_user = crud.authenticate_user(db, user.email, user.password)
     if not db_user:
@@ -63,22 +67,22 @@ def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get("/users/me", response_model=schemas.UserRead)
+@user_router.get("/users/me", response_model=schemas.UserRead)
 def read_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
-@app.get("/users/{user_id}", response_model=schemas.UserRead)
+@user_router.get("/users/{user_id}", response_model=schemas.UserRead)
 def read_user(user_id: int, db: Session = Depends(get_db)):
     user = crud.get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@app.get("/users", response_model=list[schemas.UserRead])
+@user_router.get("/users", response_model=list[schemas.UserRead])
 def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     return crud.get_users(db, skip=skip, limit=limit)
 
-@app.put("/users/me", response_model=schemas.UserRead)
+@user_router.put("/users/me", response_model=schemas.UserRead)
 def update_user_profile(
     updated_user: schemas.UserRegister, 
     db: Session = Depends(get_db),
@@ -96,7 +100,7 @@ def update_user_profile(
     db.refresh(user)
     return user
 
-@app.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
+@user_router.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user_account(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -107,3 +111,37 @@ def delete_user_account(
     db.delete(user)
     db.commit()
     return 
+app.include_router(user_router)
+
+
+session_router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+@session_router.post("/", response_model=schemas.SessionOut)
+def create_new_session(session_data: schemas.SessionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+     new_session = create_session(db=db, session_data=session_data, owner_id=current_user.id)
+     return schemas.SessionOut(
+        id=new_session.id,
+        name=new_session.name,
+        location_radius=new_session.location_radius,
+        owner_id=new_session.owner_id,
+        invited_users_ids=[user.id for user in new_session.invited_users]
+    )
+
+@session_router.get("/me", response_model=List[schemas.SessionOut])
+def get_my_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    sessions = crud.get_sessions_for_user(db, current_user.id)
+    return [
+        schemas.SessionOut(
+            id=s.id,
+            name=s.name,
+            location_radius=s.location_radius,
+            owner_id=s.owner_id,
+            invited_users_ids=[u.id for u in s.invited_users]
+        )
+        for s in sessions
+    ]
+
+app.include_router(session_router)
