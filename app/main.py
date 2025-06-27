@@ -118,13 +118,15 @@ session_router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 @session_router.post("/", response_model=schemas.SessionOut)
 def create_new_session(session_data: schemas.SessionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    
      new_session = create_session(db=db, session_data=session_data, owner_id=current_user.id)
      return schemas.SessionOut(
         id=new_session.id,
         name=new_session.name,
         location_radius=new_session.location_radius,
         owner_id=new_session.owner_id,
-        invited_users_ids=[user.id for user in new_session.invited_users]
+        invited_users_ids=[user.id for user in new_session.invited_users],
+        created_at=new_session.created_at
     )
 
 @session_router.get("/me", response_model=List[schemas.SessionOut])
@@ -139,7 +141,8 @@ def get_my_sessions(
             name=s.name,
             location_radius=s.location_radius,
             owner_id=s.owner_id,
-            invited_users_ids=[u.id for u in s.invited_users]
+            invited_users_ids=[u.id for u in s.invited_users],
+            created_at=s.created_at
         )
         for s in sessions
     ]

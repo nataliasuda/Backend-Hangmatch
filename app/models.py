@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Table
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from app.database import Base
+from datetime import datetime
+
 
 session_user_association = Table(
     'session_user',
@@ -24,6 +26,7 @@ class Session(Base):
     name = Column(String, nullable=False)
     location_radius = Column(Integer, nullable=False)
     owner_id = Column(Integer, ForeignKey('users.id'))
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     owner = relationship("User", back_populates="owned_sessions")
     invited_users = relationship("User", secondary=session_user_association, back_populates="invited_sessions")

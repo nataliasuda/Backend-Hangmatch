@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from app import models, schemas, auth
 
@@ -38,7 +39,9 @@ def create_session(db: Session, session_data: schemas.SessionCreate, owner_id: i
         name=session_data.name,
         location_radius=session_data.location_radius,
         owner_id=owner_id,
-        invited_users=invited_users
+        invited_users=invited_users,
+        created_at=datetime.utcnow()
+
     )
     db.add(new_session)
     db.commit()
@@ -50,4 +53,6 @@ def get_sessions_for_user(db: Session, user_id: int):
     if not user:
         return []
 
-    return user.owned_sessions + user.invited_sessions
+    sessions = user.owned_sessions + user.invited_sessions
+    return sorted(sessions, key=lambda s: s.created_at or datetime.min,  reverse=True)
+
