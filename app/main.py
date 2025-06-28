@@ -147,4 +147,41 @@ def get_my_sessions(
         for s in sessions
     ]
 
+
+@session_router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    session = db.query(models.Session).filter(models.Session.id == session_id.id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only owner can delete the session")
+
+    db.delete(session)
+    db.commit()
+    return 
+
+
+@session_router.delete("/leave/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def leave_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    session = db.query(models.Session).filter(models.Session.id == session_id.id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if current_user in session.invited_users:
+        session.invited_users.remove(current_user)
+        db.commit()
+
+    
+    return
+
+
 app.include_router(session_router)
