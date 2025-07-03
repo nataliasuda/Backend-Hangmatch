@@ -1,7 +1,5 @@
-from datetime import datetime
 from pydantic import BaseModel, EmailStr, validator
 import re
-from typing import List, Optional
 
 class UserRegister(BaseModel):
     name: str
@@ -52,19 +50,3 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-
-class SessionCreate(BaseModel):
-    name: str
-    location_radius: int
-    invited_users_ids: List[int]
-
-class SessionOut(BaseModel):
-    id: int
-    name: str
-    location_radius: int
-    owner_id: int
-    invited_user_ids: Optional[List[int]] = []
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
