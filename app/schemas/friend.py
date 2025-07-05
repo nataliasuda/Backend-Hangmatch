@@ -25,3 +25,10 @@ class UserResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+class FriendSearchResult(BaseModel):
+    email: EmailStr
+    status: str
+
+    class Config:
+        orm_mode = True
