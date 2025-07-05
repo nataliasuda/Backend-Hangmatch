@@ -2,14 +2,10 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models import FriendRequest, FriendRequestStatus, User
 
-
 def send_friend_request(db: Session, sender_id: int, receiver_email: str):
     receiver = db.query(User).filter(User.email == receiver_email).first()
     if not receiver:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if receiver.id == sender_id:
-        raise HTTPException(status_code=400, detail="You cannot send a friend request to yourself")
+        return None
 
     existing = db.query(FriendRequest).filter(
         FriendRequest.sender_id == sender_id,
@@ -18,7 +14,7 @@ def send_friend_request(db: Session, sender_id: int, receiver_email: str):
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail="Friend request already sent")
+        return None
 
     friend_request = FriendRequest(
         sender_id=sender_id,
@@ -30,20 +26,15 @@ def send_friend_request(db: Session, sender_id: int, receiver_email: str):
     db.refresh(friend_request)
     return friend_request
 
-
 def respond_to_request(db: Session, request_id: int, accept: bool):
     request = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
-
-    if not request:
-        raise HTTPException(status_code=404, detail="Friend request not found")
-    if request.status != FriendRequestStatus.pending:
-        raise HTTPException(status_code=400, detail="Friend request was already responded to")
+    if not request or request.status != FriendRequestStatus.pending:
+       return None
 
     request.status = FriendRequestStatus.accepted if accept else FriendRequestStatus.rejected
     db.commit()
     db.refresh(request)
     return request
-
 
 def delete_friendship(db: Session, user1_id: int, user2_id: int):
     request = db.query(FriendRequest).filter(
@@ -53,8 +44,8 @@ def delete_friendship(db: Session, user1_id: int, user2_id: int):
     ).first()
 
     if not request:
-        raise HTTPException(status_code=404, detail="Friendship not found")
+        return None
 
     db.delete(request)
     db.commit()
-    return {"detail": "Friendship removed"}
+    return request

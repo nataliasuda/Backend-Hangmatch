@@ -1,7 +1,8 @@
 from typing import List
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app import crud
+from app import schemas
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.schemas import FriendRequestResponse, FriendRequestCreate, UserResponse, FriendSearchResult
@@ -9,13 +10,18 @@ from app.models import User, FriendRequest, FriendRequestStatus
 
 router = APIRouter()
 
-@router.post("/invite", response_model=FriendRequestResponse)
+@router.post("/invite", response_model=schemas.Message)
 def send_request(
     friend_request: FriendRequestCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return crud.send_friend_request(db, current_user.id, friend_request.receiver_email)
+    result = crud.send_friend_request(db, current_user.id, friend_request.receiver_email)
+
+    if not result:
+        raise HTTPException(status_code=400, detail="Cannot send friend request.")
+    
+    return {"message": "Invite sent"}
     
 
 @router.post("/friends/respond/{request_id}", response_model=FriendRequestResponse)
@@ -25,15 +31,25 @@ def respond_to_friend(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return crud.respond_to_request(db, request_id, accept)
+    result = crud.respond_to_request(db, request_id, accept)
 
-@router.delete("/friends/remove/{user_id}")
+    if not result:
+        raise HTTPException(status_code=404, detail="Friend request not found or already handled.")
+
+    return result
+
+@router.delete("/friends/remove/{user_id}", response_model=schemas.Message)
 def remove_friend(
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return crud.delete_friendship(db, current_user.id, user_id)
+    success = crud.delete_friendship(db, current_user.id, user_id)
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Friendship not found.")
+
+    return {"message": "Friendship removed."}
 
 @router.get("/friends", response_model=List[UserResponse])
 def get_friends(
