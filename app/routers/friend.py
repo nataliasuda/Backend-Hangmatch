@@ -1,10 +1,10 @@
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app import crud
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.schemas import FriendRequestResponse, FriendRequestCreate, UserResponse
+from app.schemas import FriendRequestResponse, FriendRequestCreate, UserResponse, FriendSearchResult
 from app.models import User, FriendRequest, FriendRequestStatus
 
 router = APIRouter()
@@ -61,3 +61,35 @@ def get_my_requests(
         (FriendRequest.receiver_id == current_user.id) |
         (FriendRequest.sender_id == current_user.id)
     ).all()
+
+
+@router.get("/friends/search", response_model=List[FriendSearchResult])
+def search_users(
+    query: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    users = db.query(User).filter(
+        User.email.ilike(f"%{query}%"),
+        User.id != current_user.id,
+    ).all()
+
+    results = []
+    for user in users:
+        friend_request = db.query(FriendRequest).filter(
+            ((FriendRequest.sender_id == current_user.id) & (FriendRequest.receiver_id == user.id)) |
+            ((FriendRequest.sender_id == user.id) & (FriendRequest.receiver_id == current_user.id))
+        ).first()
+
+        if not friend_request:
+            status = "not_friends"
+        elif friend_request.status == "pending":
+            status = "pending"
+        elif friend_request.status == "accepted":
+            status = "friends"
+        else:
+            status = "not_friends"
+
+        results.append(FriendSearchResult(email=user.email, status=status))
+
+    return results
