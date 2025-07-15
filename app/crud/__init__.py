@@ -6,8 +6,12 @@ from .user import (
     get_users
 )
 
+from .session import create_session, get_sessions_for_user
+
 from .friend import (
     send_friend_request,
     respond_to_request,
     delete_friendship
 )
+
+
