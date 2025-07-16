@@ -32,7 +32,7 @@ def read_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
 @router.get("/users/{user_id}", response_model=schemas.UserRead)
-def read_user(user_id: int, db: Session = Depends(get_db)):
+def read_user(user_id: str, db: Session = Depends(get_db)):
     user = crud.get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

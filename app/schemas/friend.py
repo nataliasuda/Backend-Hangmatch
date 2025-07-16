@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from enum import Enum
+import uuid
 
 class FriendRequestCreate(BaseModel):
     receiver_email: EmailStr
@@ -10,16 +11,16 @@ class FriendRequestStatus(str, Enum):
     rejected = "rejected"
 
 class FriendRequestResponse(BaseModel):
-    id: int
-    sender_id: int
-    receiver_id: int
+    id: str
+    sender_id: str
+    receiver_id: str
     status: FriendRequestStatus
 
     class Config:
         orm_mode = True
 
 class UserResponse(BaseModel):
-    id: int
+    id: str
     name: str
     email: EmailStr
 

@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, ForeignKey, Enum
+from sqlalchemy import Column, Integer, ForeignKey, Enum, String
 from app.database import Base
 from sqlalchemy.orm import relationship
 import enum
+import uuid
 
 class FriendRequestStatus(str, enum.Enum):
     pending = "pending"
@@ -10,9 +11,9 @@ class FriendRequestStatus(str, enum.Enum):
 
 class FriendRequest(Base):
     __tablename__ = "friend_requests"
-    id = Column(Integer, primary_key=True, index=True)
-    sender_id = Column(Integer, ForeignKey("users.id"))
-    receiver_id = Column(Integer, ForeignKey("users.id"))
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    sender_id = Column(String, ForeignKey("users.id"), default=lambda: str(uuid.uuid4()))
+    receiver_id = Column(String, ForeignKey("users.id"), default=lambda: str(uuid.uuid4()))
     status = Column(Enum(FriendRequestStatus), default=FriendRequestStatus.pending)
 
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_friend_requests")

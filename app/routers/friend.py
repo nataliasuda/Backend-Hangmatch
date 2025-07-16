@@ -26,7 +26,7 @@ def send_request(
 
 @router.post("/friends/respond/{request_id}", response_model=FriendRequestResponse)
 def respond_to_friend(
-    request_id: int,
+    request_id: str,
     accept: bool,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -40,7 +40,7 @@ def respond_to_friend(
 
 @router.delete("/friends/remove/{user_id}", response_model=schemas.Message)
 def remove_friend(
-    user_id: int,
+    user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

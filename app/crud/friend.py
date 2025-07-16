@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models import FriendRequest, FriendRequestStatus, User
 
-def send_friend_request(db: Session, sender_id: int, receiver_email: str):
+def send_friend_request(db: Session, sender_id: str, receiver_email: str):
     receiver = db.query(User).filter(User.email == receiver_email).first()
     if not receiver:
         return None
@@ -26,7 +26,7 @@ def send_friend_request(db: Session, sender_id: int, receiver_email: str):
     db.refresh(friend_request)
     return friend_request
 
-def respond_to_request(db: Session, request_id: int, accept: bool):
+def respond_to_request(db: Session, request_id: str, accept: bool):
     request = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
     if not request or request.status != FriendRequestStatus.pending:
        return None
@@ -36,7 +36,7 @@ def respond_to_request(db: Session, request_id: int, accept: bool):
     db.refresh(request)
     return request
 
-def delete_friendship(db: Session, user1_id: int, user2_id: int):
+def delete_friendship(db: Session, user1_id: str, user2_id: str):
     request = db.query(FriendRequest).filter(
         ((FriendRequest.sender_id == user1_id) & (FriendRequest.receiver_id == user2_id)) |
         ((FriendRequest.sender_id == user2_id) & (FriendRequest.receiver_id == user1_id)),

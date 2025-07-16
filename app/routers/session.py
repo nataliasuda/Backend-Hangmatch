@@ -44,7 +44,7 @@ def get_my_sessions(
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_session(
-    session_id: int,
+    session_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -62,7 +62,7 @@ def delete_session(
 
 @router.delete("/leave/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def leave_session(
-    session_id: int,
+    session_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):

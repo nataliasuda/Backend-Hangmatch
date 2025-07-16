@@ -34,7 +34,7 @@ class UserLogin(BaseModel):
 
 
 class UserRead(BaseModel):
-    id: int
+    id: str
     name: str
     email: EmailStr
 
