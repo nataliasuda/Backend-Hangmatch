@@ -1,6 +1,5 @@
 from pydantic import BaseModel, EmailStr
 from enum import Enum
-import uuid
 
 class FriendRequestCreate(BaseModel):
     receiver_email: EmailStr
