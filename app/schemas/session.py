@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel
 
 class SessionCreate(BaseModel):
@@ -12,8 +12,11 @@ class SessionOut(BaseModel):
     name: str
     location_radius: int
     owner_id: str
-    invited_user_ids: Optional[List[str]] = []
+    invited_users_ids: List[str]
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+class SessionInvitationRequest(BaseModel):
+    emails: List[str]
