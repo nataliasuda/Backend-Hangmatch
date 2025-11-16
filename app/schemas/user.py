@@ -1,6 +1,8 @@
 from pydantic import BaseModel, EmailStr, validator
 import re
 
+from typing import Optional
+
 class UserRegister(BaseModel):
     name: str
     email: EmailStr
@@ -51,3 +53,26 @@ class Token(BaseModel):
     token_type: str
     refresh_token: str
 
+class UserUpdate(BaseModel):
+    name: str
+    email: EmailStr
+    password: Optional[str] = None
+    repeated_password: Optional[str] = None
+
+    @validator("password")
+    def validate_password(cls, value, values):
+        if value is None:
+            return value 
+            
+        if len(value) < 6:
+            raise ValueError("Password must be at least 6 characters long")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
+            raise ValueError("Password must contain at least one special character")
+        return value
+
+    @validator("repeated_password")
+    def passwords_match(cls, value, values):
+        if "password" in values and values["password"] is not None and values["password"] != "":
+            if value != values["password"]:
+                raise ValueError("Passwords do not match")
+        return value
