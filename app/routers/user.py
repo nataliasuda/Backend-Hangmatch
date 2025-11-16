@@ -2,6 +2,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError, jwt
 from app import crud, models, schemas
+from app import auth
 from app.models import User
 from app.auth import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY, create_access_token, create_refresh_token
 from app.database import get_db
@@ -65,7 +66,7 @@ def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
 
 @router.put("/users/me", response_model=schemas.UserRead)
 def update_user_profile(
-    updated_user: schemas.UserRegister, 
+    updated_user: schemas.UserUpdate, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -73,9 +74,18 @@ def update_user_profile(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    if updated_user.email != user.email:
+        existing_user = crud.get_user_by_email(db, updated_user.email)
+        if existing_user and existing_user.id != user.id:
+            raise HTTPException(status_code=400, detail="Email already registered")
+    
 
     user.name = updated_user.name
     user.email = updated_user.email
+
+    if updated_user.password and updated_user.password.strip():
+      
+        user.password = auth.get_password_hash(updated_user.password)
 
     db.commit()
     db.refresh(user)
