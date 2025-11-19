@@ -7,6 +7,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.schemas import FriendRequestResponse, FriendRequestCreate, UserResponse, FriendSearchResult
 from app.models import User, FriendRequest, FriendRequestStatus
+from app.schemas.friend import FriendRespond
 
 router = APIRouter()
 
@@ -27,16 +28,30 @@ def send_request(
 @router.post("/friends/respond/{request_id}", response_model=FriendRequestResponse)
 def respond_to_friend(
     request_id: str,
-    accept: bool,
+    data: FriendRespond,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    result = crud.respond_to_request(db, request_id, accept)
+    updated_request = crud.respond_to_request(db, request_id, data.accept)
 
-    if not result:
-        raise HTTPException(status_code=404, detail="Friend request not found or already handled.")
+    if not updated_request:
+        raise HTTPException(status_code=404, detail="Friend request not found")
 
-    return result
+
+    return FriendRequestResponse(
+        id=str(updated_request.id),
+        sender_id=str(updated_request.sender_id),
+        receiver_id=str(updated_request.receiver_id),
+        status=updated_request.status.value,
+        sender_email=updated_request.sender.email,
+        receiver_email=updated_request.receiver.email,
+        sender_name=updated_request.sender.name,
+        receiver_name=updated_request.receiver.name,
+        direction="incoming" if updated_request.receiver_id == current_user.id else "outgoing",
+        other_email=updated_request.sender.email if updated_request.receiver_id == current_user.id else updated_request.receiver.email,
+        other_name=updated_request.sender.name if updated_request.receiver_id == current_user.id else updated_request.receiver.name,
+    )
+
 
 @router.delete("/friends/remove/{user_id}", response_model=schemas.Message)
 def remove_friend(
@@ -73,10 +88,34 @@ def get_my_requests(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return db.query(FriendRequest).filter(
-        (FriendRequest.receiver_id == current_user.id) |
-        (FriendRequest.sender_id == current_user.id)
+
+    requests = db.query(FriendRequest).filter(
+        FriendRequest.receiver_id == current_user.id, 
+        FriendRequest.status == FriendRequestStatus.pending
     ).all()
+
+    results = []
+    for r in requests:
+        sender_email = r.sender.email if r.sender else None
+        receiver_email = r.receiver.email if r.receiver else None
+        sender_name = r.sender.name if r.sender else None
+        receiver_name = r.receiver.name if r.receiver else None
+
+        results.append({
+            "id": r.id,
+            "sender_id": r.sender_id,
+            "receiver_id": r.receiver_id,
+            "status": r.status.value if hasattr(r.status, "value") else r.status,
+            "sender_email": sender_email,
+            "receiver_email": receiver_email,
+            "direction": "incoming", 
+            "other_email": sender_email,  
+            "other_name": sender_name,   
+            "sender_name": sender_name,
+            "receiver_name": receiver_name,
+        })
+
+    return results
 
 
 @router.get("/friends/search", response_model=List[FriendSearchResult])
@@ -86,26 +125,27 @@ def search_users(
     current_user: User = Depends(get_current_user),
 ):
     users = db.query(User).filter(
-        User.email.ilike(f"%{query}%"),
+       ((User.email.ilike(f"%{query}%")) | (User.name.ilike(f"%{query}%"))),
         User.id != current_user.id,
     ).all()
 
     results = []
     for user in users:
         friend_request = db.query(FriendRequest).filter(
-            ((FriendRequest.sender_id == current_user.id) & (FriendRequest.receiver_id == user.id)) |
-            ((FriendRequest.sender_id == user.id) & (FriendRequest.receiver_id == current_user.id))
-        ).first()
+    ((FriendRequest.sender_id == current_user.id) & (FriendRequest.receiver_id == user.id)) |
+    ((FriendRequest.sender_id == user.id) & (FriendRequest.receiver_id == current_user.id))
+).order_by(FriendRequest.id.desc()).first()
+
 
         if not friend_request:
             status = "not_friends"
-        elif friend_request.status == "pending":
+        elif friend_request.status == FriendRequestStatus.pending:
             status = "pending"
-        elif friend_request.status == "accepted":
+        elif friend_request.status == FriendRequestStatus.accepted:
             status = "friends"
         else:
             status = "not_friends"
 
-        results.append(FriendSearchResult(email=user.email, status=status))
+        results.append(FriendSearchResult(id=user.id ,email=user.email,name = user.name ,status=status))
 
     return results
