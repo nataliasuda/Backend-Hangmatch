@@ -14,9 +14,10 @@ class SessionOut(BaseModel):
     owner_id: str
     invited_users_ids: List[str]
     created_at: datetime
+    status: str
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class SessionInvitationRequest(BaseModel):
     emails: List[str]
