@@ -10,7 +10,7 @@ from app.models import User
 router = APIRouter()
 
 @router.post("/sessions", response_model=schemas.SessionOut)
-def create_draft_session(session_data: schemas.SessionCreate, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):  # ZMIEŃ TUTAJ
+def create_draft_session(session_data: schemas.SessionCreate, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     session = models.Session(
         name=session_data.name,
         location_radius=session_data.location_radius,
@@ -21,20 +21,19 @@ def create_draft_session(session_data: schemas.SessionCreate, db: DBSession = De
     db.commit()
     db.refresh(session)
     return schemas.SessionOut(
-    id=session.id,
-    name=session.name,
-    location_radius=session.location_radius,
-    owner_id=session.owner_id,
-    invited_users_ids=[],
-    created_at=session.created_at
-)
+        id=session.id,
+        name=session.name,
+        location_radius=session.location_radius,
+        owner_id=session.owner_id,
+        invited_users_ids=[],       
+        created_at=session.created_at,
+        status=session.status,      
+    )
+
 
 
 @router.get("/sessions/me", response_model=List[schemas.SessionOut])
-def get_my_sessions(
-    db: DBSession = Depends(get_db), 
-    current_user: User = Depends(get_current_user)
-):
+def get_my_sessions(db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     sessions = crud.get_sessions_for_user(db, current_user.id)
     return [
         schemas.SessionOut(
@@ -42,8 +41,9 @@ def get_my_sessions(
             name=s.name,
             location_radius=s.location_radius,
             owner_id=s.owner_id,
-            invited_users_ids=[u.id for u in s.invited_users],
-            created_at=s.created_at
+            invited_users_ids=[str(u.id) for u in s.invited_users], 
+            created_at=s.created_at,
+            status=s.status,  
         )
         for s in sessions
     ]
