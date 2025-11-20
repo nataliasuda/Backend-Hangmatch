@@ -7,6 +7,9 @@ def get_user_by_email(db: Session, email: str):
 def create_user(db: Session, user: schemas.UserRegister):
     if user.password != user.repeated_password:
         return None
+    
+    if get_user_by_email(db, user.email):
+        return None
 
     hashed_password = auth.get_password_hash(user.password)
     db_user = models.User(

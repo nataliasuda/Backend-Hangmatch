@@ -1,4 +1,4 @@
 from .user import User
-from .session import Session, session_user_association
+from .session import Session, SessionRequestStatus, SessionUser
 from .friend import FriendRequestStatus, FriendRequest
 
