@@ -21,3 +21,8 @@ class SessionOut(BaseModel):
 
 class SessionInvitationRequest(BaseModel):
     emails: List[str]
+
+
+class VoteRequest(BaseModel):
+    event_id: str
+    vote: str
