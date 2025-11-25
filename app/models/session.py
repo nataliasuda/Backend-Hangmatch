@@ -18,6 +18,7 @@ class SessionUser(Base):
 
     session = relationship("Session", back_populates="invited_users_association")
     user = relationship("User", back_populates="invited_users_association")
+   
 
 
 class Session(Base):
@@ -32,3 +33,19 @@ class Session(Base):
     owner = relationship("User", back_populates="owned_sessions")
     invited_users_association = relationship("SessionUser", back_populates="session", cascade="all, delete-orphan", passive_deletes=True)
     invited_users = relationship("User", secondary="session_user", back_populates="invited_sessions", viewonly=True)
+    votes = relationship("SessionVote", back_populates="session", cascade="all, delete-orphan")
+
+
+
+class SessionVote(Base):
+    __tablename__ = "session_votes"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, ForeignKey("sessions.id", ondelete="CASCADE"))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    event_id = Column(String, nullable=False)
+    vote = Column(String, nullable=False)  # "like" / "dislike"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    session = relationship("Session", back_populates="votes")
+    user = relationship("User")
