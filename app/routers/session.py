@@ -1,10 +1,13 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.database import get_db
 from app.dependencies import get_current_user
 from sqlalchemy.orm import Session as DBSession
 from app.models import User
+from app.models.session import SessionVote
+from app.schemas.session import VoteRequest
 
 
 router = APIRouter()
@@ -123,7 +126,7 @@ def join_session(session_id: str, db: DBSession = Depends(get_db), current_user:
 @router.post("/sessions/reject/{session_id}")
 def reject_session(
     session_id: str,
-    db: DBSession = Depends(get_db),  # ZMIEŃ TUTAJ
+    db: DBSession = Depends(get_db), 
     current_user: models.User = Depends(get_current_user),
 ):
     association = db.query(models.SessionUser).filter_by(
@@ -174,4 +177,75 @@ def activate_session(session_id: str, db: DBSession = Depends(get_db), current_u
 
     session.status = 'active'
     db.commit()
-    return {"detail": "Session activated"}
+    return {"detail": "Session activated",
+    "location_radius": session.location_radius } 
+
+
+@router.post("/sessions/{session_id}/vote")
+def vote_event(
+    session_id: str,
+    vote_data: VoteRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+
+    session = db.query(models.Session).filter_by(id=session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+
+    is_participant = (
+        session.owner_id == current_user.id or
+        db.query(models.SessionUser)
+        .filter_by(session_id=session_id, user_id=current_user.id, status="joined")
+        .first()
+    )
+
+    if not is_participant:
+        raise HTTPException(status_code=403, detail="You are not part of this session")
+
+    
+    new_vote = SessionVote(
+        session_id=session_id,
+        user_id=current_user.id,
+        event_id=vote_data.event_id,
+        vote=vote_data.vote  
+    )
+
+    db.add(new_vote)
+    db.commit()
+    db.refresh(new_vote)
+
+    return {"message": "Vote saved", "vote": new_vote.vote}
+
+
+@router.get("/sessions/{session_id}/results")
+def get_session_results(session_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    session = db.query(models.Session).filter(models.Session.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    participants_count = (
+        1 + db.query(models.SessionUser)
+        .filter_by(session_id=session_id, status="joined")
+        .count()
+    )
+
+    votes = (
+        db.query(models.SessionVote)
+        .filter_by(session_id=session_id)
+        .all()
+    )
+
+
+    vote_map = {}
+    for v in votes:
+        vote_map.setdefault(v.event_id, []).append(v.vote)
+
+    matched_events = [
+        event_id
+        for event_id, user_votes in vote_map.items()
+        if len(user_votes) == participants_count and all(v == "like" for v in user_votes)
+    ]
+
+    return {"matched_event_ids": matched_events}
