@@ -16,4 +16,5 @@ class User(Base):
    
     sent_friend_requests = relationship("FriendRequest", back_populates="sender", foreign_keys='FriendRequest.sender_id')
     received_friend_requests = relationship("FriendRequest", back_populates="receiver", foreign_keys='FriendRequest.receiver_id')
+    votes = relationship("SessionVote", back_populates="user", cascade="all, delete-orphan")
     
