@@ -33,6 +33,8 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
 def register_user(user: schemas.UserRegister, db: Session = Depends(get_db)):
     if crud.get_user_by_email(db, user.email):
         raise HTTPException(status_code=400, detail="Email already registered")
+    if crud.get_user_by_name(db, user.name):
+        raise HTTPException(status_code=400, detail="Name already taken")
     created_user = crud.create_user(db, user)
     if not created_user:
         raise HTTPException(status_code=400, detail="Passwords do not match")
@@ -78,6 +80,11 @@ def update_user_profile(
         existing_user = crud.get_user_by_email(db, updated_user.email)
         if existing_user and existing_user.id != user.id:
             raise HTTPException(status_code=400, detail="Email already registered")
+        
+    if updated_user.name != user.name:
+        existing_user_by_name = crud.get_user_by_name(db, updated_user.name)
+        if existing_user_by_name and existing_user_by_name.id != user.id:
+            raise HTTPException(status_code=400, detail="Name already taken")
     
 
     user.name = updated_user.name
