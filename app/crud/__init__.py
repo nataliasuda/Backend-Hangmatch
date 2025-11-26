@@ -3,7 +3,8 @@ from .user import (
     create_user,
     authenticate_user,
     get_user,
-    get_users
+    get_users,
+    get_user_by_name
 )
 
 from .session import create_session, get_sessions_for_user
