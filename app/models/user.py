@@ -9,6 +9,7 @@ class User(Base):
     name = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     password = Column(String, nullable=False)
+    avatar_url = Column(String, nullable=True)
 
     invited_sessions = relationship("Session", secondary="session_user", back_populates="invited_users", viewonly=True)
     owned_sessions = relationship("Session", back_populates="owner")
