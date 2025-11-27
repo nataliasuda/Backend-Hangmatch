@@ -1,5 +1,5 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from jose import JWTError, jwt
 from app import crud, models, schemas
 from app import auth
@@ -9,6 +9,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from sqlalchemy.orm import Session
 from app.schemas import Token
+from pathlib import Path
 
 router = APIRouter()
 
@@ -109,3 +110,62 @@ def delete_user_account(
     db.delete(user)
     db.commit()
     return 
+
+
+@router.put("/users/me/avatar", response_model=schemas.UserRead)
+async def update_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    print(f" Upload avatara dla user: {current_user.id}")
+    
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    try:
+        avatars_dir = Path("static/avatars")
+        avatars_dir.mkdir(parents=True, exist_ok=True)
+        
+        file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+        filename = f"{current_user.id}.{file_extension}"
+        file_path = avatars_dir / filename
+        
+        print(f" Zapisuję: {file_path}")
+        
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        avatar_url = f"/static/avatars/{filename}"
+        
+        user = db.query(models.User).filter(models.User.id == current_user.id).first()
+        user.avatar_url = avatar_url
+        db.commit()
+        db.refresh(user)
+        
+        print(f" Avatar zaktualizowany: {avatar_url}")
+        return user
+        
+    except Exception as e:
+        print(f" Błąd: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/users/me/avatar", response_model=schemas.UserRead)
+def delete_avatar(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    user = db.query(models.User).filter(models.User.id == current_user.id).first()
+    
+    if user.avatar_url:
+        file_path = Path("static/avatars") / f"{current_user.id}.jpg"
+        if file_path.exists():
+            file_path.unlink()
+    
+    user.avatar_url = None
+    db.commit()
+    db.refresh(user)
+    
+    return user
