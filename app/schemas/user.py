@@ -39,6 +39,7 @@ class UserRead(BaseModel):
     id: str
     name: str
     email: EmailStr
+    avatar_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -58,6 +59,7 @@ class UserUpdate(BaseModel):
     email: EmailStr
     password: Optional[str] = None
     repeated_password: Optional[str] = None
+    avatar_url: Optional[str] = None
 
     @validator("password")
     def validate_password(cls, value, values):
