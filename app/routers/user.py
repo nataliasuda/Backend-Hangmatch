@@ -99,17 +99,20 @@ def update_user_profile(
     db.refresh(user)
     return user
 
-@router.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/users/me", response_model=schemas.Message)
 def delete_user_account(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    user = db.query(models.User).filter(models.User.id == current_user.id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
-    db.commit()
-    return 
+        if current_user.avatar_url:
+            file_path = Path("static/avatars") / f"{current_user.id}.jpg"
+            if file_path.exists():
+                file_path.unlink()
+        
+        db.delete(current_user)
+        db.commit()
+        
+        return {"message": "User deleted successfully"}
 
 
 @router.put("/users/me/avatar", response_model=schemas.UserRead)
