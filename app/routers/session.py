@@ -237,7 +237,6 @@ def get_session_results(session_id: str, db: Session = Depends(get_db), current_
         .all()
     )
 
-
     vote_map = {}
     for v in votes:
         vote_map.setdefault(v.event_id, []).append(v.vote)
@@ -248,4 +247,8 @@ def get_session_results(session_id: str, db: Session = Depends(get_db), current_
         if len(user_votes) == participants_count and all(v == "like" for v in user_votes)
     ]
 
-    return {"matched_event_ids": matched_events}
+    return {
+        "matched_event_ids": matched_events,
+        "match_count": len(matched_events),
+        "total_participants": participants_count
+    }
